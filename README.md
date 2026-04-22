@@ -38,6 +38,33 @@ Akses `http://localhost:5000`.
 Untuk akses via IP/HP, gunakan reverse proxy HTTPS atau pakai tombol
 "Upload Foto" (yang di HP akan membuka kamera native via `capture=environment`).
 
+## Deploy Gratis ke Render.com
+
+1. Buka https://render.com dan sign-in pakai akun GitHub kamu.
+2. Push repo ini ke GitHub (kalau belum).
+3. Di Render dashboard klik **New +** → **Blueprint** → pilih repo ini.
+   Render otomatis membaca `render.yaml` dan membuat service Web.
+4. Klik **Apply**. Tunggu ~2-3 menit sampai status **Live**.
+5. Buka URL yang diberikan (contoh `https://monitoring-berita-acara.onrender.com`).
+   Karena URL-nya `https://`, fitur kamera (`getUserMedia`) langsung jalan di iPad.
+
+Alternatif manual (tanpa blueprint):
+- **New + → Web Service** → connect repo.
+- Build Command: `pip install -r requirements.txt`
+- Start Command: `gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120`
+- Plan: **Free**.
+
+### Catatan Free Tier Render
+- Service tidur setelah 15 menit idle; request pertama lambat ~30 detik.
+- **Disk ephemeral**: SQLite (`data/monitoring.db`) dan file uploads **hilang
+  setiap redeploy / restart**. Untuk demo tidak masalah; untuk produksi, pasang
+  Persistent Disk (plan berbayar) atau pakai PostgreSQL + object storage.
+
+### Alternatif hosting gratis
+- **PythonAnywhere** (free tier persisten): upload file, set WSGI ke `app:app`.
+- **Fly.io** (free allowance + volume persisten untuk SQLite): `fly launch`.
+- **Railway** ($5 credit gratis/bulan): deploy langsung dari GitHub.
+
 ## Struktur
 
 ```
