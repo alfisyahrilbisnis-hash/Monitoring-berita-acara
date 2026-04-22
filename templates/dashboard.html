@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Dashboard &middot; Monitoring BA{% endblock %}
+{% block content %}
+<section class="hero">
+    <div>
+        <h1>Dashboard Monitoring</h1>
+        <p class="muted">Ringkasan progres proyek dan Berita Acara di setiap unit.</p>
+    </div>
+    <div class="hero-actions">
+        <a href="{{ url_for('project_new') }}" class="btn btn-primary">+ Proyek Baru</a>
+        <a href="{{ url_for('ba_list') }}" class="btn">Daftar BA</a>
+    </div>
+</section>
+
+<section class="kpi-row">
+    <div class="kpi">
+        <div class="kpi-label">Total Unit</div>
+        <div class="kpi-value">{{ unit_stats|length }}</div>
+    </div>
+    <div class="kpi">
+        <div class="kpi-label">Total Proyek</div>
+        <div class="kpi-value">{{ totals.total_projects or 0 }}</div>
+    </div>
+    <div class="kpi kpi-ok">
+        <div class="kpi-label">Proyek Selesai</div>
+        <div class="kpi-value">{{ totals.total_completed or 0 }}</div>
+    </div>
+    <div class="kpi kpi-accent">
+        <div class="kpi-label">Total BA Dibuat</div>
+        <div class="kpi-value">{{ total_ba }}</div>
+    </div>
+</section>
+
+<section>
+    <h2>Progres per Unit</h2>
+    <div class="grid">
+        {% for s in unit_stats %}
+        <article class="card">
+            <header class="card-head">
+                <div>
+                    <h3>{{ s.unit.name }}</h3>
+                    <div class="muted small">{{ s.unit.location or '-' }}</div>
+                </div>
+                <span class="badge">{{ s.pct }}%</span>
+            </header>
+            <div class="progress"><span style="width: {{ s.pct }}%"></span></div>
+            <ul class="stats">
+                <li><span>Total</span><b>{{ s.total }}</b></li>
+                <li><span>Selesai</span><b class="ok">{{ s.completed }}</b></li>
+                <li><span>Berjalan</span><b class="warn">{{ s.in_progress }}</b></li>
+                <li><span>BA</span><b class="accent">{{ s.ba_count }}</b></li>
+            </ul>
+            <footer class="card-foot">
+                <a class="link" href="{{ url_for('projects', unit_id=s.unit.id) }}">Lihat proyek &rarr;</a>
+            </footer>
+        </article>
+        {% else %}
+        <p class="muted">Belum ada unit. <a href="{{ url_for('units') }}">Tambah unit</a>.</p>
+        {% endfor %}
+    </div>
+</section>
+
+<section>
+    <h2>BA Terbaru</h2>
+    {% if recent_ba %}
+    <div class="table-wrap">
+    <table class="table">
+        <thead><tr>
+            <th>Nomor BA</th><th>Judul</th><th>Proyek</th><th>Unit</th><th>Dibuat</th><th></th>
+        </tr></thead>
+        <tbody>
+        {% for b in recent_ba %}
+            <tr>
+                <td class="mono">{{ b.ba_number }}</td>
+                <td>{{ b.title }}</td>
+                <td>{{ b.project_code }} &middot; {{ b.project_name }}</td>
+                <td>{{ b.unit_name }}</td>
+                <td>{{ b.created_at }}</td>
+                <td><a class="btn btn-sm" href="{{ url_for('download_ba', filename=b.pdf_path) }}" target="_blank">Buka PDF</a></td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+        <p class="muted">Belum ada BA.</p>
+    {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Monitoring Berita Acara{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<header class="topbar">
+    <div class="brand">
+        <span class="logo">BA</span>
+        <div>
+            <div class="brand-title">Monitoring Berita Acara</div>
+            <div class="brand-sub">Pantau proyek per unit &middot; Buat BA otomatis dari foto</div>
+        </div>
+    </div>
+    <nav class="nav">
+        <a href="{{ url_for('dashboard') }}" class="{% if request.endpoint=='dashboard' %}active{% endif %}">Dashboard</a>
+        <a href="{{ url_for('units') }}" class="{% if request.endpoint=='units' %}active{% endif %}">Unit</a>
+        <a href="{{ url_for('projects') }}" class="{% if request.endpoint in ['projects','project_new','project_detail'] %}active{% endif %}">Proyek</a>
+        <a href="{{ url_for('ba_list') }}" class="{% if request.endpoint=='ba_list' %}active{% endif %}">Berita Acara</a>
+    </nav>
+</header>
+
+<main class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-stack">
+            {% for cat, msg in messages %}
+                <div class="flash flash-{{ cat }}">{{ msg }}</div>
+            {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+</main>
+
+<footer class="footer">
+    <small>&copy; {{ 2026 }} Monitoring Berita Acara &middot; Flask + SQLite</small>
+</footer>
+{% block scripts %}{% endblock %}
+</body>
+</html>

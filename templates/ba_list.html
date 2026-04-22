@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Berita Acara{% endblock %}
+{% block content %}
+<section class="hero">
+    <div>
+        <h1>Daftar Berita Acara</h1>
+        <p class="muted">Seluruh BA yang pernah dibuat.</p>
+    </div>
+</section>
+
+<div class="table-wrap">
+<table class="table">
+    <thead><tr>
+        <th>Nomor BA</th><th>Judul</th><th>Proyek</th><th>Unit</th>
+        <th>Dibuat Oleh</th><th>Tanggal</th><th>Foto</th><th></th>
+    </tr></thead>
+    <tbody>
+    {% for b in ba_list %}
+        <tr>
+            <td class="mono">{{ b.ba_number }}</td>
+            <td>{{ b.title }}</td>
+            <td>{{ b.project_code }} &middot; {{ b.project_name }}</td>
+            <td>{{ b.unit_name }}</td>
+            <td>{{ b.created_by or '-' }}</td>
+            <td>{{ b.created_at }}</td>
+            <td>
+                <a target="_blank" href="{{ url_for('download_photo', filename=b.photo_path) }}">
+                    <img class="thumb" src="{{ url_for('download_photo', filename=b.photo_path) }}" alt="foto">
+                </a>
+            </td>
+            <td><a class="btn btn-sm" target="_blank"
+                   href="{{ url_for('download_ba', filename=b.pdf_path) }}">PDF</a></td>
+        </tr>
+    {% else %}
+        <tr><td colspan="8" class="muted">Belum ada BA.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+{% endblock %}

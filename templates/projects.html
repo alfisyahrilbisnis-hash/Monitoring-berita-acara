@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Proyek &middot; Monitoring BA{% endblock %}
+{% block content %}
+<section class="hero">
+    <div>
+        <h1>Proyek</h1>
+        <p class="muted">Daftar seluruh proyek per unit.</p>
+    </div>
+    <div class="hero-actions">
+        <a href="{{ url_for('project_new') }}" class="btn btn-primary">+ Proyek Baru</a>
+    </div>
+</section>
+
+<form class="filter-bar" method="get">
+    <select name="unit_id">
+        <option value="">Semua Unit</option>
+        {% for u in units %}
+        <option value="{{ u.id }}" {% if selected_unit==u.id %}selected{% endif %}>{{ u.name }}</option>
+        {% endfor %}
+    </select>
+    <select name="status">
+        <option value="">Semua Status</option>
+        <option value="IN_PROGRESS" {% if selected_status=='IN_PROGRESS' %}selected{% endif %}>Berjalan</option>
+        <option value="COMPLETED" {% if selected_status=='COMPLETED' %}selected{% endif %}>Selesai</option>
+    </select>
+    <button class="btn" type="submit">Filter</button>
+    <a class="btn btn-ghost" href="{{ url_for('projects') }}">Reset</a>
+</form>
+
+<div class="table-wrap">
+<table class="table">
+    <thead>
+        <tr>
+            <th>Kode</th><th>Nama Proyek</th><th>Unit</th><th>PIC</th>
+            <th>Status</th><th>BA</th><th>Selesai</th><th></th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for p in projects %}
+        <tr>
+            <td class="mono">{{ p.code }}</td>
+            <td>{{ p.name }}</td>
+            <td>{{ p.unit_name }}</td>
+            <td>{{ p.pic or '-' }}</td>
+            <td>
+                {% if p.status == 'COMPLETED' %}
+                    <span class="pill pill-ok">SELESAI</span>
+                {% else %}
+                    <span class="pill pill-warn">BERJALAN</span>
+                {% endif %}
+            </td>
+            <td class="accent">{{ p.ba_count }}</td>
+            <td>{{ p.completed_at or '-' }}</td>
+            <td><a class="btn btn-sm" href="{{ url_for('project_detail', project_id=p.id) }}">Detail</a></td>
+        </tr>
+    {% else %}
+        <tr><td colspan="8" class="muted">Tidak ada proyek.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+{% endblock %}

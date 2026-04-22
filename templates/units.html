@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Unit &middot; Monitoring BA{% endblock %}
+{% block content %}
+<section class="hero">
+    <div>
+        <h1>Daftar Unit</h1>
+        <p class="muted">Kelola unit organisasi yang dipantau.</p>
+    </div>
+</section>
+
+<div class="two-col">
+    <section class="panel">
+        <h2>Tambah Unit</h2>
+        <form method="post" class="form">
+            <label>Nama Unit
+                <input name="name" required placeholder="Contoh: Unit Distribusi">
+            </label>
+            <label>Lokasi
+                <input name="location" placeholder="Contoh: Jakarta">
+            </label>
+            <button class="btn btn-primary" type="submit">Simpan</button>
+        </form>
+    </section>
+    <section class="panel">
+        <h2>Unit Terdaftar</h2>
+        {% if units %}
+        <table class="table">
+            <thead><tr><th>Nama</th><th>Lokasi</th><th>Dibuat</th><th></th></tr></thead>
+            <tbody>
+            {% for u in units %}
+                <tr>
+                    <td>{{ u.name }}</td>
+                    <td>{{ u.location or '-' }}</td>
+                    <td>{{ u.created_at }}</td>
+                    <td><a class="link" href="{{ url_for('projects', unit_id=u.id) }}">Proyek &rarr;</a></td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <p class="muted">Belum ada unit.</p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

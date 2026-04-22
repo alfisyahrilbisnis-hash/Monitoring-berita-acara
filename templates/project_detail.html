@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}{{ project.code }} &middot; {{ project.name }}{% endblock %}
+{% block content %}
+<section class="hero">
+    <div>
+        <h1>{{ project.name }}</h1>
+        <p class="muted">
+            <span class="mono">{{ project.code }}</span>
+            &middot; Unit: <b>{{ project.unit_name }}</b>
+            &middot; PIC: {{ project.pic or '-' }}
+        </p>
+    </div>
+    <div class="hero-actions">
+        {% if project.status == 'COMPLETED' %}
+            <span class="pill pill-ok pill-lg">SELESAI</span>
+        {% else %}
+            <span class="pill pill-warn pill-lg">BERJALAN</span>
+        {% endif %}
+    </div>
+</section>
+
+{% if project.description %}
+<section class="panel">
+    <h3>Deskripsi</h3>
+    <p>{{ project.description }}</p>
+</section>
+{% endif %}
+
+<div class="two-col">
+    <section class="panel">
+        <h2>Tandai Proyek Selesai</h2>
+        <p class="muted small">Upload file bukti penyelesaian (PDF, DOC, XLS, atau foto). Proyek akan otomatis berstatus SELESAI.</p>
+
+        {% if project.status == 'COMPLETED' %}
+            <div class="alert alert-ok">
+                <b>Proyek ini sudah selesai.</b><br>
+                {% if project.completion_file %}
+                    File bukti:
+                    <a class="link" target="_blank"
+                       href="{{ url_for('download_completion', filename=project.completion_file) }}">
+                       {{ project.completion_file }}</a><br>
+                {% endif %}
+                Diselesaikan pada: {{ project.completed_at }}
+            </div>
+            <form method="post" action="{{ url_for('reopen_project', project_id=project.id) }}">
+                <button class="btn btn-ghost" type="submit">Buka kembali proyek</button>
+            </form>
+        {% else %}
+        <form method="post" enctype="multipart/form-data"
+              action="{{ url_for('complete_project', project_id=project.id) }}" class="form">
+            <label>File Penyelesaian
+                <input type="file" name="completion_file" required
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,image/*">
+            </label>
+            <button class="btn btn-primary" type="submit">Upload &amp; Tandai Selesai</button>
+        </form>
+        {% endif %}
+    </section>
+
+    <section class="panel panel-accent">
+        <h2>Buat Berita Acara Otomatis</h2>
+        <p class="muted small">
+            Ambil foto langsung dari kamera, sistem akan otomatis membuat dokumen
+            Berita Acara (PDF) berisi foto dan metadata proyek.
+        </p>
+        <a class="btn btn-primary btn-lg"
+           href="{{ url_for('ba_capture', project_id=project.id) }}">
+            📷 Foto &amp; Buat BA
+        </a>
+    </section>
+</div>
+
+<section class="panel">
+    <h2>Berita Acara Proyek Ini</h2>
+    {% if ba_list %}
+    <div class="table-wrap">
+    <table class="table">
+        <thead><tr>
+            <th>Nomor BA</th><th>Judul</th><th>Dibuat Oleh</th>
+            <th>Tanggal</th><th>Foto</th><th>Dokumen</th>
+        </tr></thead>
+        <tbody>
+        {% for b in ba_list %}
+            <tr>
+                <td class="mono">{{ b.ba_number }}</td>
+                <td>{{ b.title }}</td>
+                <td>{{ b.created_by or '-' }}</td>
+                <td>{{ b.created_at }}</td>
+                <td>
+                    <a target="_blank" href="{{ url_for('download_photo', filename=b.photo_path) }}">
+                        <img class="thumb" src="{{ url_for('download_photo', filename=b.photo_path) }}" alt="foto">
+                    </a>
+                </td>
+                <td>
+                    <a class="btn btn-sm" target="_blank"
+                       href="{{ url_for('download_ba', filename=b.pdf_path) }}">Buka PDF</a>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+        <p class="muted">Belum ada BA untuk proyek ini.</p>
+    {% endif %}
+</section>
+{% endblock %}

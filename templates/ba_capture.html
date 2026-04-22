@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Foto &amp; Buat BA{% endblock %}
+{% block content %}
+<section class="hero">
+    <div>
+        <h1>Buat Berita Acara Otomatis</h1>
+        <p class="muted">
+            Proyek: <b>{{ project.name }}</b> ({{ project.code }}) &middot; Unit: {{ project.unit_name }}
+        </p>
+    </div>
+    <div class="hero-actions">
+        <a class="btn btn-ghost" href="{{ url_for('project_detail', project_id=project.id) }}">Kembali</a>
+    </div>
+</section>
+
+<div class="two-col">
+    <section class="panel">
+        <h2>1. Ambil Foto</h2>
+        <div class="camera">
+            <video id="video" autoplay playsinline muted></video>
+            <canvas id="canvas" hidden></canvas>
+            <img id="preview" alt="preview" hidden>
+        </div>
+        <div class="camera-controls">
+            <button id="startBtn" class="btn">Aktifkan Kamera</button>
+            <button id="snapBtn" class="btn btn-primary" disabled>📷 Ambil Foto</button>
+            <button id="retakeBtn" class="btn btn-ghost" disabled>Ulangi</button>
+            <label class="btn btn-ghost file-pick">
+                Upload Foto
+                <input id="fileInput" type="file" accept="image/*" capture="environment" hidden>
+            </label>
+        </div>
+        <p class="muted small">
+            Jika kamera tidak aktif (browser tidak mendukung / bukan HTTPS),
+            gunakan tombol "Upload Foto" untuk memilih/membuat foto dari perangkat.
+        </p>
+    </section>
+
+    <section class="panel">
+        <h2>2. Detail BA</h2>
+        <form id="baForm" class="form">
+            <label>Judul BA
+                <input id="title" name="title"
+                    value="BA Penyelesaian {{ project.name }}">
+            </label>
+            <label>Dibuat Oleh
+                <input id="createdBy" name="created_by" placeholder="Nama petugas">
+            </label>
+            <label>Catatan / Keterangan
+                <textarea id="notes" name="notes" rows="5"
+                    placeholder="Deskripsikan kondisi di lapangan..."></textarea>
+            </label>
+            <button id="submitBtn" class="btn btn-primary btn-lg" type="submit" disabled>
+                Simpan &amp; Generate BA (PDF)
+            </button>
+        </form>
+        <div id="result" class="alert alert-ok" hidden>
+            <b>BA berhasil dibuat.</b>
+            <div id="baNumber" class="mono"></div>
+            <div class="actions">
+                <a id="pdfLink" class="btn btn-primary" target="_blank">Buka PDF</a>
+                <a id="detailLink" class="btn btn-ghost">Kembali ke Proyek</a>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    const projectId = {{ project.id }};
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const preview = document.getElementById('preview');
+    const startBtn = document.getElementById('startBtn');
+    const snapBtn = document.getElementById('snapBtn');
+    const retakeBtn = document.getElementById('retakeBtn');
+    const fileInput = document.getElementById('fileInput');
+    const submitBtn = document.getElementById('submitBtn');
+    const result = document.getElementById('result');
+
+    let stream = null;
+    let photoDataUrl = null;
+
+    function setPhoto(dataUrl) {
+        photoDataUrl = dataUrl;
+        preview.src = dataUrl;
+        preview.hidden = false;
+        video.hidden = true;
+        snapBtn.disabled = true;
+        retakeBtn.disabled = false;
+        submitBtn.disabled = false;
+    }
+
+    function clearPhoto() {
+        photoDataUrl = null;
+        preview.hidden = true;
+        preview.src = '';
+        video.hidden = false;
+        submitBtn.disabled = true;
+        retakeBtn.disabled = true;
+        if (stream) snapBtn.disabled = false;
+    }
+
+    startBtn.addEventListener('click', async () => {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: 'environment' } },
+                audio: false,
+            });
+            video.srcObject = stream;
+            snapBtn.disabled = false;
+            startBtn.disabled = true;
+        } catch (err) {
+            alert('Tidak bisa mengakses kamera: ' + err.message +
+                '\nGunakan tombol "Upload Foto".');
+        }
+    });
+
+    snapBtn.addEventListener('click', () => {
+        const w = video.videoWidth || 1280;
+        const h = video.videoHeight || 720;
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        setPhoto(dataUrl);
+        if (stream) {
+            stream.getTracks().forEach(t => t.stop());
+            stream = null;
+            startBtn.disabled = false;
+        }
+    });
+
+    retakeBtn.addEventListener('click', () => {
+        clearPhoto();
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => setPhoto(ev.target.result);
+        reader.readAsDataURL(file);
+    });
+
+    document.getElementById('baForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!photoDataUrl) { alert('Ambil foto dulu.'); return; }
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Memproses...';
+
+        const payload = {
+            title: document.getElementById('title').value,
+            created_by: document.getElementById('createdBy').value,
+            notes: document.getElementById('notes').value,
+            photo: photoDataUrl,
+        };
+
+        try {
+            const resp = await fetch(`/projects/${projectId}/ba`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload),
+            });
+            const data = await resp.json();
+            if (!data.ok) throw new Error(data.error || 'Gagal');
+
+            document.getElementById('baNumber').textContent = data.ba_number;
+            document.getElementById('pdfLink').href = data.pdf_url;
+            document.getElementById('detailLink').href = data.detail_url;
+            result.hidden = false;
+            submitBtn.textContent = 'Selesai ✓';
+        } catch (err) {
+            alert('Error: ' + err.message);
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Simpan & Generate BA (PDF)';
+        }
+    });
+})();
+</script>
+{% endblock %}
