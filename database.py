@@ -50,6 +50,15 @@ def init_db():
             created_at TEXT DEFAULT (datetime('now','localtime')),
             FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
         );
+
+        CREATE TABLE IF NOT EXISTS ba_photos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ba_id INTEGER NOT NULL,
+            photo_path TEXT NOT NULL,
+            caption TEXT,
+            order_idx INTEGER DEFAULT 0,
+            FOREIGN KEY (ba_id) REFERENCES berita_acara(id) ON DELETE CASCADE
+        );
         """
     )
     conn.commit()

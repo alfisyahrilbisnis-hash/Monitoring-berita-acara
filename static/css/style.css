@@ -196,10 +196,42 @@ h3 { font-size: 16px; margin: 0; }
 .camera {
     background: #0f172a; border-radius: 10px; overflow: hidden;
     aspect-ratio: 4 / 3; display: grid; place-items: center; margin-bottom: 10px;
+    position: relative;
 }
 .camera video, .camera img { width: 100%; height: 100%; object-fit: cover; }
-.camera-controls { display: flex; gap: 8px; flex-wrap: wrap; }
+.camera-off { color: #94a3b8; text-align: center; padding: 20px; }
+.camera-off div:first-child { font-size: 16px; margin-bottom: 4px; }
+.camera-controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
 .file-pick { cursor: pointer; }
+
+.gallery {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px; margin-top: 10px;
+}
+.gallery-item {
+    border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+    background: #fff; display: flex; flex-direction: column;
+}
+.gallery-thumb {
+    aspect-ratio: 4 / 3; background-size: cover; background-position: center;
+    background-color: #e2e8f0;
+}
+.gallery-body { padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+.gallery-head { display: flex; justify-content: space-between; align-items: center; }
+.gallery-idx {
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--primary);
+}
+.gallery-item .caption {
+    width: 100%; padding: 6px 8px; border: 1px solid var(--border);
+    border-radius: 6px; font-size: 12px; font-family: inherit;
+}
+.btn-icon {
+    width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--border);
+    background: #fff; color: var(--danger); cursor: pointer; font-weight: 700;
+    display: grid; place-items: center; padding: 0; font-size: 12px;
+}
+.btn-icon:hover { background: #fee2e2; border-color: #fecaca; }
 
 .footer {
     text-align: center; padding: 20px; color: var(--muted);

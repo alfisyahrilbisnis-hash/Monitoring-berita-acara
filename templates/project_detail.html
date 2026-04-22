@@ -77,7 +77,7 @@
     <table class="table">
         <thead><tr>
             <th>Nomor BA</th><th>Judul</th><th>Dibuat Oleh</th>
-            <th>Tanggal</th><th>Foto</th><th>Dokumen</th>
+            <th>Tanggal</th><th>Cover</th><th>Lampiran</th><th>Dokumen</th>
         </tr></thead>
         <tbody>
         {% for b in ba_list %}
@@ -91,6 +91,7 @@
                         <img class="thumb" src="{{ url_for('download_photo', filename=b.photo_path) }}" alt="foto">
                     </a>
                 </td>
+                <td><span class="badge">{{ b.photo_count or 1 }} foto</span></td>
                 <td>
                     <a class="btn btn-sm" target="_blank"
                        href="{{ url_for('download_ba', filename=b.pdf_path) }}">Buka PDF</a>

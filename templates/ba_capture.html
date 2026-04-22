@@ -7,6 +7,10 @@
         <p class="muted">
             Proyek: <b>{{ project.name }}</b> ({{ project.code }}) &middot; Unit: {{ project.unit_name }}
         </p>
+        <p class="muted small">
+            Ambil foto lapangan sebanyak yang dibutuhkan. Foto pertama otomatis
+            jadi cover BA. Caption opsional.
+        </p>
     </div>
     <div class="hero-actions">
         <a class="btn btn-ghost" href="{{ url_for('project_detail', project_id=project.id) }}">Kembali</a>
@@ -15,55 +19,64 @@
 
 <div class="two-col">
     <section class="panel">
-        <h2>1. Ambil Foto</h2>
+        <h2>1. Ambil Foto Lapangan</h2>
         <div class="camera">
             <video id="video" autoplay playsinline muted></video>
             <canvas id="canvas" hidden></canvas>
-            <img id="preview" alt="preview" hidden>
+            <div id="cameraOff" class="camera-off">
+                <div>Kamera belum aktif</div>
+                <div class="muted small">Tap "Aktifkan Kamera" atau "Upload Foto"</div>
+            </div>
         </div>
         <div class="camera-controls">
             <button id="startBtn" class="btn">Aktifkan Kamera</button>
-            <button id="snapBtn" class="btn btn-primary" disabled>📷 Ambil Foto</button>
-            <button id="retakeBtn" class="btn btn-ghost" disabled>Ulangi</button>
+            <button id="snapBtn" class="btn btn-primary" disabled>📷 Jepret</button>
+            <button id="stopBtn" class="btn btn-ghost" disabled>Matikan</button>
             <label class="btn btn-ghost file-pick">
                 Upload Foto
-                <input id="fileInput" type="file" accept="image/*" capture="environment" hidden>
+                <input id="fileInput" type="file" accept="image/*" capture="environment" hidden multiple>
             </label>
         </div>
         <p class="muted small">
-            Jika kamera tidak aktif (browser tidak mendukung / bukan HTTPS),
-            gunakan tombol "Upload Foto" untuk memilih/membuat foto dari perangkat.
+            Jepret sebanyak yang perlu - tombol "Jepret" bisa ditekan berkali-kali.
         </p>
     </section>
 
     <section class="panel">
-        <h2>2. Detail BA</h2>
+        <h2>2. Detail BA <span class="muted small">(opsional)</span></h2>
         <form id="baForm" class="form">
             <label>Judul BA
                 <input id="title" name="title"
                     value="BA Penyelesaian {{ project.name }}">
             </label>
             <label>Dibuat Oleh
-                <input id="createdBy" name="created_by" placeholder="Nama petugas">
+                <input id="createdBy" name="created_by" placeholder="Nama petugas lapangan">
             </label>
             <label>Catatan / Keterangan
-                <textarea id="notes" name="notes" rows="5"
-                    placeholder="Deskripsikan kondisi di lapangan..."></textarea>
+                <textarea id="notes" name="notes" rows="4"
+                    placeholder="Ringkas kondisi pekerjaan (opsional)..."></textarea>
             </label>
             <button id="submitBtn" class="btn btn-primary btn-lg" type="submit" disabled>
-                Simpan &amp; Generate BA (PDF)
+                <span id="submitText">Simpan &amp; Generate BA (PDF)</span>
             </button>
         </form>
         <div id="result" class="alert alert-ok" hidden>
             <b>BA berhasil dibuat.</b>
             <div id="baNumber" class="mono"></div>
-            <div class="actions">
+            <div id="baPhotoCount" class="muted small"></div>
+            <div class="actions" style="margin-top:10px;">
                 <a id="pdfLink" class="btn btn-primary" target="_blank">Buka PDF</a>
                 <a id="detailLink" class="btn btn-ghost">Kembali ke Proyek</a>
             </div>
         </div>
     </section>
 </div>
+
+<section class="panel">
+    <h2>3. Foto Terkumpul <span id="photoCount" class="badge">0</span></h2>
+    <p class="muted small" id="noPhoto">Belum ada foto. Ambil minimal satu foto di atas.</p>
+    <div id="gallery" class="gallery"></div>
+</section>
 {% endblock %}
 
 {% block scripts %}
@@ -72,50 +85,99 @@
     const projectId = {{ project.id }};
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
-    const preview = document.getElementById('preview');
+    const cameraOff = document.getElementById('cameraOff');
     const startBtn = document.getElementById('startBtn');
     const snapBtn = document.getElementById('snapBtn');
-    const retakeBtn = document.getElementById('retakeBtn');
+    const stopBtn = document.getElementById('stopBtn');
     const fileInput = document.getElementById('fileInput');
     const submitBtn = document.getElementById('submitBtn');
+    const submitText = document.getElementById('submitText');
     const result = document.getElementById('result');
+    const gallery = document.getElementById('gallery');
+    const photoCount = document.getElementById('photoCount');
+    const noPhoto = document.getElementById('noPhoto');
 
     let stream = null;
-    let photoDataUrl = null;
+    let photos = []; // [{id, dataUrl, caption}]
 
-    function setPhoto(dataUrl) {
-        photoDataUrl = dataUrl;
-        preview.src = dataUrl;
-        preview.hidden = false;
-        video.hidden = true;
-        snapBtn.disabled = true;
-        retakeBtn.disabled = false;
-        submitBtn.disabled = false;
+    function setCameraActive(active) {
+        cameraOff.hidden = active;
+        video.hidden = !active;
+        snapBtn.disabled = !active;
+        stopBtn.disabled = !active;
+        startBtn.disabled = active;
+    }
+    setCameraActive(false);
+
+    function renderGallery() {
+        gallery.innerHTML = '';
+        photoCount.textContent = photos.length;
+        noPhoto.hidden = photos.length > 0;
+        submitBtn.disabled = photos.length === 0;
+
+        photos.forEach((p, i) => {
+            const item = document.createElement('div');
+            item.className = 'gallery-item';
+            item.innerHTML = `
+                <div class="gallery-thumb" style="background-image:url('${p.dataUrl}')"></div>
+                <div class="gallery-body">
+                    <div class="gallery-head">
+                        <span class="gallery-idx">${i === 0 ? 'Cover' : 'Foto ' + (i+1)}</span>
+                        <button class="btn-icon" data-action="del" data-id="${p.id}" title="Hapus">X</button>
+                    </div>
+                    <input type="text" class="caption" data-id="${p.id}"
+                        placeholder="Caption (opsional)"
+                        value="${p.caption.replace(/"/g, '&quot;')}">
+                </div>
+            `;
+            gallery.appendChild(item);
+        });
     }
 
-    function clearPhoto() {
-        photoDataUrl = null;
-        preview.hidden = true;
-        preview.src = '';
-        video.hidden = false;
-        submitBtn.disabled = true;
-        retakeBtn.disabled = true;
-        if (stream) snapBtn.disabled = false;
+    gallery.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action="del"]');
+        if (!btn) return;
+        const id = btn.dataset.id;
+        photos = photos.filter(p => p.id !== id);
+        renderGallery();
+    });
+    gallery.addEventListener('input', (e) => {
+        if (!e.target.classList.contains('caption')) return;
+        const id = e.target.dataset.id;
+        const p = photos.find(x => x.id === id);
+        if (p) p.caption = e.target.value;
+    });
+
+    function addPhoto(dataUrl) {
+        photos.push({
+            id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+            dataUrl,
+            caption: '',
+        });
+        renderGallery();
     }
 
     startBtn.addEventListener('click', async () => {
         try {
             stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: { ideal: 'environment' } },
+                video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 } },
                 audio: false,
             });
             video.srcObject = stream;
-            snapBtn.disabled = false;
-            startBtn.disabled = true;
+            await video.play();
+            setCameraActive(true);
         } catch (err) {
             alert('Tidak bisa mengakses kamera: ' + err.message +
                 '\nGunakan tombol "Upload Foto".');
         }
+    });
+
+    stopBtn.addEventListener('click', () => {
+        if (stream) {
+            stream.getTracks().forEach(t => t.stop());
+            stream = null;
+        }
+        setCameraActive(false);
     });
 
     snapBtn.addEventListener('click', () => {
@@ -123,40 +185,32 @@
         const h = video.videoHeight || 720;
         canvas.width = w;
         canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, w, h);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-        setPhoto(dataUrl);
-        if (stream) {
-            stream.getTracks().forEach(t => t.stop());
-            stream = null;
-            startBtn.disabled = false;
-        }
-    });
-
-    retakeBtn.addEventListener('click', () => {
-        clearPhoto();
+        canvas.getContext('2d').drawImage(video, 0, 0, w, h);
+        addPhoto(canvas.toDataURL('image/jpeg', 0.88));
     });
 
     fileInput.addEventListener('change', (e) => {
-        const file = e.target.files && e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => setPhoto(ev.target.result);
-        reader.readAsDataURL(file);
+        const files = Array.from(e.target.files || []);
+        files.forEach(f => {
+            const reader = new FileReader();
+            reader.onload = ev => addPhoto(ev.target.result);
+            reader.readAsDataURL(f);
+        });
+        fileInput.value = '';
     });
 
     document.getElementById('baForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        if (!photoDataUrl) { alert('Ambil foto dulu.'); return; }
+        if (photos.length === 0) { alert('Ambil minimal satu foto.'); return; }
+
         submitBtn.disabled = true;
-        submitBtn.textContent = 'Memproses...';
+        submitText.textContent = 'Memproses ' + photos.length + ' foto...';
 
         const payload = {
             title: document.getElementById('title').value,
             created_by: document.getElementById('createdBy').value,
             notes: document.getElementById('notes').value,
-            photo: photoDataUrl,
+            photos: photos.map(p => ({ data: p.dataUrl, caption: p.caption })),
         };
 
         try {
@@ -169,14 +223,17 @@
             if (!data.ok) throw new Error(data.error || 'Gagal');
 
             document.getElementById('baNumber').textContent = data.ba_number;
+            document.getElementById('baPhotoCount').textContent =
+                data.photo_count + ' foto terlampir';
             document.getElementById('pdfLink').href = data.pdf_url;
             document.getElementById('detailLink').href = data.detail_url;
             result.hidden = false;
-            submitBtn.textContent = 'Selesai ✓';
+            submitText.textContent = 'Selesai';
+            result.scrollIntoView({ behavior: 'smooth', block: 'center' });
         } catch (err) {
             alert('Error: ' + err.message);
             submitBtn.disabled = false;
-            submitBtn.textContent = 'Simpan & Generate BA (PDF)';
+            submitText.textContent = 'Simpan & Generate BA (PDF)';
         }
     });
 })();

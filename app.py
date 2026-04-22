@@ -215,7 +215,10 @@ def project_detail(project_id):
         conn.close()
         abort(404)
     ba_list = conn.execute(
-        "SELECT * FROM berita_acara WHERE project_id = ? ORDER BY created_at DESC",
+        """SELECT ba.*,
+               (SELECT COUNT(*) FROM ba_photos WHERE ba_id = ba.id) AS photo_count
+           FROM berita_acara ba
+           WHERE ba.project_id = ? ORDER BY ba.created_at DESC""",
         (project_id,),
     ).fetchall()
     conn.close()
@@ -303,17 +306,33 @@ def ba_create(project_id):
     title = (data.get("title") or "").strip() or f"BA {project['name']}"
     notes = (data.get("notes") or "").strip()
     created_by = (data.get("created_by") or "").strip() or "Petugas Lapangan"
-    photo_data = data.get("photo")
 
-    if not photo_data:
+    raw_photos = data.get("photos")
+    if not raw_photos and data.get("photo"):
+        raw_photos = [{"data": data["photo"], "caption": ""}]
+    if not raw_photos:
         conn.close()
-        return jsonify({"ok": False, "error": "Foto wajib diambil"}), 400
+        return jsonify({"ok": False, "error": "Minimal satu foto wajib diambil"}), 400
 
     ba_number = generate_ba_number(project_id)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     basename = f"proj{project_id}_{stamp}_{uuid.uuid4().hex[:6]}"
 
-    photo_path = save_photo_from_dataurl(photo_data, PHOTO_DIR, basename)
+    saved_photos = []
+    for i, item in enumerate(raw_photos, start=1):
+        data_url = item.get("data") if isinstance(item, dict) else item
+        caption = (item.get("caption") or "").strip() if isinstance(item, dict) else ""
+        if not data_url:
+            continue
+        p = save_photo_from_dataurl(
+            data_url, PHOTO_DIR, f"{basename}_{i:02d}"
+        )
+        saved_photos.append({"path": p, "caption": caption})
+
+    if not saved_photos:
+        conn.close()
+        return jsonify({"ok": False, "error": "Foto tidak valid"}), 400
+
     pdf_path = BA_DIR / f"{basename}.pdf"
     build_ba_pdf(
         output_path=pdf_path,
@@ -324,11 +343,11 @@ def ba_create(project_id):
         project_name=project["name"],
         pic=project["pic"] or "",
         notes=notes,
-        photo_path=photo_path,
+        photos=saved_photos,
         created_by=created_by,
     )
 
-    conn.execute(
+    cur = conn.execute(
         """INSERT INTO berita_acara
            (project_id, ba_number, title, notes, photo_path, pdf_path, created_by)
            VALUES (?, ?, ?, ?, ?, ?, ?)""",
@@ -337,10 +356,19 @@ def ba_create(project_id):
             ba_number,
             title,
             notes,
-            photo_path.name,
+            saved_photos[0]["path"].name,
             pdf_path.name,
             created_by,
         ),
+    )
+    ba_id = cur.lastrowid
+    conn.executemany(
+        """INSERT INTO ba_photos (ba_id, photo_path, caption, order_idx)
+           VALUES (?, ?, ?, ?)""",
+        [
+            (ba_id, sp["path"].name, sp["caption"], idx)
+            for idx, sp in enumerate(saved_photos, start=1)
+        ],
     )
     conn.commit()
     conn.close()
@@ -348,6 +376,7 @@ def ba_create(project_id):
         {
             "ok": True,
             "ba_number": ba_number,
+            "photo_count": len(saved_photos),
             "pdf_url": url_for("download_ba", filename=pdf_path.name),
             "detail_url": url_for("project_detail", project_id=project_id),
         }
