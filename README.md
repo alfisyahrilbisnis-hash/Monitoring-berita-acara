@@ -38,6 +38,25 @@ Akses `http://localhost:5000`.
 Untuk akses via IP/HP, gunakan reverse proxy HTTPS atau pakai tombol
 "Upload Foto" (yang di HP akan membuka kamera native via `capture=environment`).
 
+## Jalankan di GitHub Codespaces (dari iPad / browser apapun)
+
+Repo ini punya `.devcontainer/devcontainer.json` yang otomatis setup Python +
+forward port 5000 dengan URL HTTPS publik. **Tidak perlu install apapun di iPad**.
+
+1. Buka `https://github.com/<user>/<repo>` di Safari iPad.
+2. Klik tombol hijau **Code** → tab **Codespaces** → **Create codespace on
+   `claude/news-monitoring-dashboard-hZfKK`**.
+3. Tunggu ~1-2 menit. VS Code terbuka di browser dengan Python siap, deps
+   ter-install, dan `python app.py` auto-jalan.
+4. Panel **Ports** akan menampilkan URL seperti
+   `https://<random>-5000.app.github.dev`. Klik ikon "Open in Browser" atau
+   copy URL, buka di tab Safari baru.
+5. Karena URL-nya HTTPS, tombol "Aktifkan Kamera" di `/ba/capture` langsung
+   jalan di iPad.
+
+Free tier: 60 jam core-hours/bulan (Codespace 2-core → 30 jam real-time / bulan).
+Codespace otomatis stop setelah 30 menit idle (settingan default).
+
 ## Jalankan di Termux (Android)
 
 1. Install **Termux** dari **F-Droid** (https://f-droid.org/packages/com.termux/) —
