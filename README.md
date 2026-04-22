@@ -38,6 +38,45 @@ Akses `http://localhost:5000`.
 Untuk akses via IP/HP, gunakan reverse proxy HTTPS atau pakai tombol
 "Upload Foto" (yang di HP akan membuka kamera native via `capture=environment`).
 
+## Jalankan di Termux (Android)
+
+1. Install **Termux** dari **F-Droid** (https://f-droid.org/packages/com.termux/) —
+   JANGAN dari Play Store (versi Play Store sudah outdated).
+2. Buka Termux, jalankan:
+   ```bash
+   termux-setup-storage            # izin akses storage (opsional)
+   pkg update -y && pkg upgrade -y
+   pkg install -y git
+   git clone <URL-REPO-KAMU> && cd Monitoring-berita-acara
+   bash setup_termux.sh
+   python app.py
+   ```
+3. Buka di browser HP yang sama: **http://localhost:5000** → kamera aktif
+   karena `localhost` dianggap secure context.
+4. Akses dari HP/tablet lain di WiFi yang sama:
+   ```bash
+   ifconfig | grep "inet "   # cari IP misal 192.168.1.25
+   ```
+   Lalu buka `http://192.168.1.25:5000` di device lain. Kamera di device lain
+   TIDAK akan aktif (HTTP non-localhost), tapi tombol "Upload Foto" tetap jalan.
+
+### Supaya bisa diakses dari internet (opsional)
+Pakai tunnel HTTPS dari Termux:
+```bash
+pkg install -y nodejs
+npx localtunnel --port 5000
+# atau cloudflared:
+pkg install -y cloudflared
+cloudflared tunnel --url http://localhost:5000
+```
+Dapat URL `https://...` yang bisa dibuka siapa saja, kamera pun aktif.
+
+### Supaya tetap jalan di background
+Termux kill proses saat di-background. Solusi:
+- Aktifkan **Termux:Boot** (F-Droid) → auto-start saat HP boot.
+- Gunakan `termux-wake-lock` sebelum menjalankan server, lalu
+  jalankan dengan `nohup python app.py > server.log 2>&1 &`.
+
 ## Deploy Gratis ke Render.com
 
 1. Buka https://render.com dan sign-in pakai akun GitHub kamu.
